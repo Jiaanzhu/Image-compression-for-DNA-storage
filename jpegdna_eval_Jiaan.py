@@ -46,7 +46,7 @@ def stats(func):
             print(f"Mean squared error: {MSE}")
             print(f"PSNR: {PSNR}")
             print(f"SSIM: {SSIM_r}")
-            print(f"MS_SSIM_r: {MS_SSIM_r}")
+            print(f"MS_SSIM: {MS_SSIM_r}")
             #print(f"VIF: {VIF_r}")
             print(f"Compression rate: {compression_rate} bits/nt")
             # io.imsave(str(compression_rate) + ".png", decoded)
