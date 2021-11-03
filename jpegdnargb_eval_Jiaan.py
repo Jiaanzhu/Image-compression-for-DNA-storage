@@ -31,9 +31,14 @@ def stats(func):
             img_ycbcr = color_conv.forward(img)
             decoded_ycbcr = color_conv.forward(decoded)
             
-            #Calculate MSE and PSNR
-            MSE = ((img_ycbcr.astype(int)-decoded_ycbcr.astype(int))**2).mean()
-            PSNR = 10 * math.log10((255*255)/MSE)
+            #Calculate MSE and PSNR, Y:U:V = 6:1:1
+            MSE_y = ((img_ycbcr[:,:,0].astype(int)-decoded_ycbcr[:,:,0].astype(int))**2).mean()
+            MSE_u = ((img_ycbcr[:,:,1].astype(int)-decoded_ycbcr[:,:,1].astype(int))**2).mean()
+            MSE_v = ((img_ycbcr[:,:,2].astype(int)-decoded_ycbcr[:,:,2].astype(int))**2).mean()
+            PSNR_y = 10 * math.log10((255*255)/MSE_y)
+            PSNR_u = 10 * math.log10((255*255)/MSE_u)
+            PSNR_v = 10 * math.log10((255*255)/MSE_v)
+            PSNR = (PSNR_y * 6 + PSNR_u + PSNR_v)/8
             
             #Call the functions of SSIM, MS-SSIM, VIF
             D_1 = SSIM()
@@ -53,7 +58,7 @@ def stats(func):
             VIF_value = D_3(torch_decoded, torch_img, as_loss=False)
             
             #Print out the results
-            print(f"Mean squared error: {MSE}")
+            #print(f"Mean squared error: {MSE}")
             print(f"General PSNR: {PSNR}")
             print(f"SSIM: {SSIM_value}")
             print(f"MS_SSIM: {MS_SSIM_value}")
