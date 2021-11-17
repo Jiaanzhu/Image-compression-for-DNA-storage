@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 # Choose between "from_img" and "default" for the frequencies
 CHOICE = "from_img"
 # Enables formatting (if True, bit-rate will be estimated with format taken into account)
+#FORMATTING = False
 FORMATTING = True
 
 def stats(func):
@@ -29,14 +30,16 @@ def stats(func):
         except ValueError as err:
             print(err)
         else:
-            MSE2 = 0
             if FORMATTING:
                 code_length = 0
                 for el in code:
                     code_length += len(el)
                 compression_rate = 24 * img.shape[0] * img.shape[1] / code_length
+                print(f"Code length: {code_length}")
             else:
                 compression_rate = 24 * img.shape[0] * img.shape[1] / len(code)
+                code_length = len(code)
+                print(f"Code length: {code_length}")
             color_conv = RGBYCbCr()
             img_ycbcr = color_conv.forward(img)
             decoded_ycbcr = color_conv.forward(decoded)
@@ -64,6 +67,7 @@ def stats(func):
             SSIM_value = D_1(torch_decoded[:, [0], :, :] , torch_img[:, [0], :, :], as_loss=False) 
             #MS-SSIM on luma channel
             MS_SSIM_value = D_2(torch_decoded[:, [0], :, :], torch_img[:, [0], :, :], as_loss=False)
+            
             #VIF on spatial domain
             VIF_value = D_3(torch_decoded, torch_img, as_loss=False)
             
@@ -137,15 +141,15 @@ if __name__ == '__main__':
                            ,("SSIM_r", float), ("MS_SSIM_r", float), ("VIF_r", float)])
     general_results = []
     img_names = []
-    for i in range(1, 3):
+    for i in range(1, 2):
     #for i in range(1, 25):
         img_names.append(f"kodim{i:02d}.png")
     for i in range(len(img_names)):
         IMG_NAME = img_names[i]
         img = io.imread(Path(jpegdna.__path__[0] +  "/../img/" + IMG_NAME))
-        img = img[:8*(img.shape[0]//8), :8*(img.shape[1]//8)]
+        #img = img[:8*(img.shape[0]//8), :8*(img.shape[1]//8)]
         values = []
-        alphas = [1e-5, 0.145, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        alphas = [0.01, 0.012, 0.014, 0.016, 0.018, 0.02, 0.04, 0.06, 0.08, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
         for alpha in alphas:
         #for alpha in [1e-5, 0.145, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
             print("==================================")
@@ -196,10 +200,10 @@ if __name__ == '__main__':
         plt.plot(lists[0], lists[4], color = 'blue', marker = "^")
         plt.xlabel('Bitrate(nt/bit)')
         plt.ylabel('VIF')
-        plt.savefig(f"res/kodim{i+1:02d}_result.png")
+        plt.savefig(f"../../res/kodim{i+1:02d}_result.png")
             
     
-    with ExcelWriter("res/results_rgb.xlsx") as writer: # pylint: disable=abstract-class-instantiated
+    with ExcelWriter("../../res/results_rgb.xlsx") as writer: # pylint: disable=abstract-class-instantiated
         for i in range(len(general_results)):
             dtf = pd.DataFrame(general_results[i])
             dtf.to_excel(writer, sheet_name=img_names[i], index=None, header=True)
