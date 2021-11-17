@@ -1,3 +1,3 @@
 # Image-compression-for-DNA-storage
 
-Script for running the encoding then decoding
+The script for running the encoding then decoding
