@@ -14,6 +14,8 @@ from IQA_pytorch import SSIM, MS_SSIM, VIFs
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+from jpegdna.transforms import ChannelSampler
 
 # Choose between "from_img" and "default" for the frequencies
 CHOICE = "from_img"
@@ -40,6 +42,8 @@ def stats(func):
                 compression_rate = 24 * img.shape[0] * img.shape[1] / len(code)
                 code_length = len(code)
                 print(f"Code length: {code_length}")
+            
+            #Convert RGB to YCbCr
             color_conv = RGBYCbCr()
             img_ycbcr = color_conv.forward(img)
             decoded_ycbcr = color_conv.forward(decoded)
@@ -54,23 +58,25 @@ def stats(func):
             PSNR = (PSNR_y * 6 + PSNR_u + PSNR_v)/8
             
             #Call the functions of SSIM, MS-SSIM, VIF
-            D_1 = SSIM()
-            D_2 = MS_SSIM()
-            D_3 = VIFs() # spatial domain VIF
+            D_1 = SSIM(channels=1)
+            D_2 = MS_SSIM(channels=1)
+            D_3 = VIFs(channels=3) # spatial domain VIF
             
-            #To get 4-dimension torch tensors, (N, 3, H, W)
-            torch_decoded = torch.FloatTensor(decoded_ycbcr.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)
-            torch_img = torch.FloatTensor(img_ycbcr.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)
+            #To get 4-dimension torch tensors, (N, 3, H, W), divide by 255 to let the range between (0,1)
+            torch_decoded = torch.FloatTensor(decoded.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)/255
+            torch_img = torch.FloatTensor(img.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)/255
+            torch_decoded_ycbcr = torch.FloatTensor(decoded_ycbcr.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)/255
+            torch_img_ycbcr = torch.FloatTensor(img_ycbcr.astype(int).swapaxes(0,2).swapaxes(1,2)).unsqueeze(0)/255
             
             #Calculate SSIM, MS-SSIM, VIF
             #SSIM on luma channel
-            SSIM_value = D_1(torch_decoded[:, [0], :, :] , torch_img[:, [0], :, :], as_loss=False) 
+            SSIM_value = D_1(torch_decoded_ycbcr[:, [0], :, :] , torch_img_ycbcr[:, [0], :, :], as_loss=False) 
             #MS-SSIM on luma channel
-            MS_SSIM_value = D_2(torch_decoded[:, [0], :, :], torch_img[:, [0], :, :], as_loss=False)
+            MS_SSIM_value = D_2(torch_decoded_ycbcr[:, [0], :, :], torch_img_ycbcr[:, [0], :, :], as_loss=False)
             
             #VIF on spatial domain
             VIF_value = D_3(torch_decoded, torch_img, as_loss=False)
-            
+            #print(D_3(torch_img, torch_img, as_loss=False))
             #Print out the results
             #print(f"Mean squared error: {MSE}")
             print(f"General PSNR: {PSNR}")
@@ -83,11 +89,11 @@ def stats(func):
             # io.imsave(str(compression_rate) + ".png", decoded)
             return compression_rate, PSNR, SSIM_value, MS_SSIM_value, VIF_value
     return inner
-
+    
 def encode_decode(img, alpha):
     """Function for encoding and decoding"""
     # Coding
-    codec = JPEGDNARGB(alpha, formatting=FORMATTING, verbose=False, verbosity=3)
+    codec = JPEGDNARGB(alpha, formatting=FORMATTING, verbose=False, verbosity=3, channel_sampler="4:4:4")
     if CHOICE == "from_img":
         if FORMATTING:
             oligos = codec.full_encode(img, "from_img")
@@ -103,7 +109,7 @@ def encode_decode(img, alpha):
         else:
             (code, res) = codec.full_encode(img, "default")
     # Decoding
-    codec2 = JPEGDNARGB(alpha, formatting=FORMATTING, verbose=False, verbosity=3)
+    codec2 = JPEGDNARGB(alpha, formatting=FORMATTING, verbose=False, verbosity=3, channel_sampler="4:4:4")
     if CHOICE == "from_img":
         if FORMATTING:
             decoded = codec2.full_decode(oligos, "from_img")
@@ -136,12 +142,16 @@ def experiment(img, alpha):
     """Full experiment with stats and exception handling"""
     return encode_decode(img, alpha)
 
+# Logistic fit function
+def func(x, a, b, c):
+    return a/(1+np.exp(-b*(x-c)))
+
 if __name__ == '__main__':
     value = make_dataclass("value", [("Compressionrate", float), ("PSNR", float)
                            ,("SSIM_r", float), ("MS_SSIM_r", float), ("VIF_r", float)])
     general_results = []
     img_names = []
-    for i in range(1, 2):
+    for i in range(1, 11):
     #for i in range(1, 25):
         img_names.append(f"kodim{i:02d}.png")
     for i in range(len(img_names)):
@@ -149,7 +159,7 @@ if __name__ == '__main__':
         img = io.imread(Path(jpegdna.__path__[0] +  "/../img/" + IMG_NAME))
         #img = img[:8*(img.shape[0]//8), :8*(img.shape[1]//8)]
         values = []
-        alphas = [0.01, 0.012, 0.014, 0.016, 0.018, 0.02, 0.04, 0.06, 0.08, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        alphas = [0.01, 0.012, 0.014, 0.016, 0.018, 0.02, 0.025, 0.03, 0.035, 0.04, 0.06, 0.08, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0]
         for alpha in alphas:
         #for alpha in [1e-5, 0.145, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
             print("==================================")
@@ -162,14 +172,20 @@ if __name__ == '__main__':
                 else:
                     continue
         general_results.append(values)
-    for i in range(len(img_names)):
+        
+    #Plotting
+    x_standard = np.linspace(1.2,8.4,10)
+    len_x, len_y = len(img_names), len(x_standard)
+    PSNR_global, SSIM_global, MS_SSIM_global, VIF_global = np.zeros((len_x, len_y)), np.zeros((len_x, len_y)), np.zeros((len_x, len_y)), np.zeros((len_x, len_y))
+    
+    for i in range(len_x):
         # all the values of image i
         vals = general_results[i]
         lists = [[] for _ in range(5)]
         # compression rate
         for j in range(len(vals)):
             # bitrate = 1/Compression rate
-            lists[0].append(1/vals[j].Compressionrate)
+            lists[0].append(1/vals[j].Compressionrate * 24)
             # PSNR
             lists[1].append(vals[j].PSNR)
             # SSIM
@@ -179,28 +195,81 @@ if __name__ == '__main__':
             # VIF
             lists[4].append(vals[j].VIF_r)
         # Plot   
-
+        xdata = lists[0]
+        
         plt.figure(f"kodim{i+1:02d} Result analysis", figsize=(16,12))
         plt.subplot(221)
-        plt.plot(lists[0], lists[1], color = 'green', marker = "^")
-        plt.xlabel('Bitrate(nt/bit)')
+        #ydata = np.array(lists[1])
+        ydata = np.array(lists[1])/100 # /100 to avoid overflow
+        #plt.plot(xdata, ydata, 'b^', label='data')
+        plt.plot(xdata, ydata*100, 'b^', label='data')
+        popt, pcov = curve_fit(func, xdata, ydata, maxfev=5000)
+        #plt.plot(xdata, func(xdata, *popt), 'r-',label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))  
+        plt.plot(xdata, func(xdata, *popt)*100, 'r-',label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))        
+        #PSNR_global[i,:] = func(x_standard, *popt)
+        PSNR_global[i,:] = func(x_standard, *popt)*100
+        plt.xlabel('Rate(nts/pixel)')
         plt.ylabel('PSNR')
+        plt.legend()
         
         plt.subplot(222)
-        plt.plot(lists[0], lists[2], color = 'red', marker = "^")
-        plt.xlabel('Bitrate(nt/bit)')
+        ydata = lists[2]
+        plt.plot(xdata, ydata, 'b^', label='data')
+        popt, pcov = curve_fit(func, xdata, ydata, maxfev=5000)
+        plt.plot(xdata, func(xdata, *popt), 'r-',label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+        SSIM_global[i,:] = func(x_standard, *popt)
+        plt.xlabel('Rate(nts/pixel)')
         plt.ylabel('SSIM')
+        plt.legend()
         
         plt.subplot(223)
-        plt.plot(lists[0], lists[3], color = 'skyblue', marker = "^")
-        plt.xlabel('Bitrate(nt/bit)')
+        ydata = lists[3]
+        plt.plot(xdata, ydata, 'b^', label='data')
+        popt, pcov = curve_fit(func, xdata, ydata, maxfev=5000)
+        plt.plot(xdata, func(xdata, *popt), 'r-',label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+        MS_SSIM_global[i,:] = func(x_standard, *popt)
+        plt.xlabel('Rate(nts/pixel)')
         plt.ylabel('MS-SSIM')
+        plt.legend()
         
         plt.subplot(224)
-        plt.plot(lists[0], lists[4], color = 'blue', marker = "^")
-        plt.xlabel('Bitrate(nt/bit)')
+        ydata = lists[4]
+        plt.plot(xdata, ydata, 'b^', label='data')
+        popt, pcov = curve_fit(func, xdata, ydata, maxfev=5000)
+        plt.plot(xdata, func(xdata, *popt), 'r-',label='fit: a=%5.3f, b=%5.3f, c=%5.3f' % tuple(popt))
+        VIF_global[i,:] = func(x_standard, *popt)
+        plt.xlabel('Rate(nts/pixel)')
         plt.ylabel('VIF')
+        plt.legend()
         plt.savefig(f"../../res/kodim{i+1:02d}_result.png")
+
+    # Plot global
+    plt.figure("Global Result analysis", figsize=(16,12))
+    plt.subplot(221)
+    plt.errorbar(x=x_standard, y=PSNR_global.mean(0), yerr=PSNR_global.std(0), fmt='co--')
+    plt.xlabel('Rate(nts/pixel)')
+    #plt.xlabel('Bitrate(nt/bit)')
+    plt.ylabel('PSNR')
+
+    plt.figure("Global Result analysis", figsize=(16,12))
+    plt.subplot(222)
+    plt.errorbar(x=x_standard, y=SSIM_global.mean(0), yerr=SSIM_global.std(0), fmt='co--')
+    plt.xlabel('Rate(nts/pixel)')
+    plt.ylabel('SSIM')
+
+    plt.figure("Global Result analysis", figsize=(16,12))
+    plt.subplot(223)
+    plt.errorbar(x=x_standard, y=MS_SSIM_global.mean(0), yerr=MS_SSIM_global.std(0), fmt='co--')
+    plt.xlabel('Rate(nts/pixel)')
+    plt.ylabel('MS-SSIM')
+
+    plt.figure("Global Result analysis", figsize=(16,12))
+    plt.subplot(224)
+    plt.errorbar(x=x_standard, y=VIF_global.mean(0), yerr=VIF_global.std(0), fmt='co--')
+    plt.xlabel('Rate(nts/pixel)')
+    plt.ylabel('VIF')      
+
+    plt.savefig("../../res/Global_result.png")
             
     
     with ExcelWriter("../../res/results_rgb.xlsx") as writer: # pylint: disable=abstract-class-instantiated
