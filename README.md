@@ -7,15 +7,19 @@
 
 3.The script I used is in the folder **jpegdna/scripts**, including:
 
-**jpegdnargb_eval.py** Input: original image, Output: the compressed image file(in png format), DNA sequence file and info file(about size of image, huffman tables).
+**jpegdnargb_eval.py** 
+Input: original image, Output: the compressed image file(in png format), DNA sequence file and info file(about size of image, huffman tables).
 
-**Analysis.py** Input: DNA sequence file, info file, and original image as input, Output: image quality analysis plots.
+**Analysis.py** 
+Input: DNA sequence file, info file, and original image as input, Output: image quality analysis plots.
 
-**mesa_eval.py** Input: DNA sequence file, Output: DNA sequence file(Mutated). Mutate the sequence by MESA(https://github.com/umr-ds/mesa_dna_sim) in an API way.
+**mesa_eval.py** 
+Input: DNA sequence file, Output: DNA sequence file(Mutated). Mutate the sequence by MESA(https://github.com/umr-ds/mesa_dna_sim) in an API way.
 
 
 
-**convert_fasta.py** Input: DNA sequence file, Output: DNA sequence fasta file. (Some DNA error simulator require the input in fasta format, for example DeepSimulator: https://github.com/liyu95/DeepSimulator)
+**convert_fasta.py** 
+Input: DNA sequence file, Output: DNA sequence fasta file. (Some DNA error simulator require the input in fasta format, for example DeepSimulator: https://github.com/liyu95/DeepSimulator)
 
 
 
