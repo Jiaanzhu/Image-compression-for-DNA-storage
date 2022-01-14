@@ -1,0 +1,6 @@
+
+      [console_scripts]
+      jdnae = jpegdna.scripts.encode:main
+      jdnad = jpegdna.scripts.decode:main
+      jdnat = jpegdna.scripts.eval:main
+      
