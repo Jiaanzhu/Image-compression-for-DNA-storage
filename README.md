@@ -16,7 +16,8 @@ Input: DNA sequence file, info file, and original image as input, Output: image 
 **mesa_eval.py**  
 Input: DNA sequence file, Output: DNA sequence file(Mutated). Mutate the sequence by MESA(https://github.com/umr-ds/mesa_dna_sim) in an API way.
 
-
+**Image_generator**  
+Input: DNA sequence file, Output: decoded image file.
 
 **convert_fasta.py**  
 Input: DNA sequence file, Output: DNA sequence fasta file. (Some DNA error simulator require the input in fasta format, for example DeepSimulator: https://github.com/liyu95/DeepSimulator)
