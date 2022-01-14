@@ -5,7 +5,7 @@
 
 2.The main code of this project is taken from https://github.com/jpegdna-mediacoding/Jpeg_DNA_Python (the version updated on 14 December, 2021). Some code modifications are made to avoid decoding script stopping due to 'IndexError: list index out of range’. 
 
-3.The script I used is in the folder **jpegdna/scripts**, including:
+3.The scripts I used are in the folder **jpegdna/scripts**, including:
 
 **jpegdnargb_eval.py**  
 Input: original image, Output: the compressed image file(in png format), DNA sequence file and info file(about size of image, huffman tables).
